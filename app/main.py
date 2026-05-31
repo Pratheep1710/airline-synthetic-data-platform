@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -59,18 +59,22 @@ app.add_middleware(
 @app.middleware("http")
 async def correlation_and_audit_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Correlation-ID", str(uuid4()))
-    request_id_ctx_var.set(request_id)
-    response = await call_next(request)
-    response.headers["X-Correlation-ID"] = request_id
-    logger.info(
-        "request_completed",
-        extra={
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-        },
-    )
-    return response
+    token = request_id_ctx_var.set(request_id)
+    try:
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = request_id
+        logger.info(
+            "request_completed",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "client": request.client.host if request.client else None,
+            },
+        )
+        return response
+    finally:
+        request_id_ctx_var.reset(token)
 
 
 @app.exception_handler(Exception)
@@ -79,6 +83,13 @@ async def catch_all_exception_handler(_request: Request, exc: Exception):
     if settings.environment == "production":
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException):
+    # Preserve FastAPI HTTP status codes (e.g. 401/403/404/409) in production.
+    logger.info("http_exception", extra={"status_code": exc.status_code, "detail": exc.detail})
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers)
 
 
 @app.get("/health", tags=["health"])

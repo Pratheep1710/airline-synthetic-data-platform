@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import desc, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_client
@@ -13,6 +16,8 @@ from app.db import models
 from app.db.repositories import JobRepository
 from app.generation.pipeline import GenerationPipeline, request_counts
 from app.schemas.common import GenerationJobResponse
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetService:
@@ -29,14 +34,28 @@ class DatasetService:
         enable_llm_enrichment: bool,
         dataset_version: str | None,
     ) -> models.DatasetGenerationJob:
+        start_time = datetime.now(UTC)
         # Use microseconds to avoid collisions on rapid consecutive requests.
         version = dataset_version or datetime.now(UTC).strftime("v%Y%m%d%H%M%S%f")
+        logger.info(
+            "generation_job_received",
+            extra={
+                "requested_dataset_version": dataset_version,
+                "resolved_dataset_version": version,
+                "record_count": record_count,
+                "enable_llm_enrichment": enable_llm_enrichment,
+            },
+        )
         existing = self.db.scalar(
             select(models.DatasetGenerationJob).where(
                 models.DatasetGenerationJob.dataset_version == version
             )
         )
         if existing:
+            logger.warning(
+                "generation_job_duplicate_dataset_version",
+                extra={"dataset_version": version},
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Dataset version already exists: {version}",
@@ -52,13 +71,39 @@ class DatasetService:
         )
 
         async with self._generation_lock:
+            logger.info(
+                "generation_job_lock_acquired",
+                extra={"job_id": job.job_id, "dataset_version": version},
+            )
             self.jobs.create(job)
             self.db.flush()
             try:
+                logger.info(
+                    "generation_job_pipeline_started",
+                    extra={"job_id": job.job_id, "dataset_version": version},
+                )
                 result = await self.pipeline.run(
                     dataset_version=version,
                     record_count=record_count,
                     enable_llm_enrichment=enable_llm_enrichment,
+                )
+                logger.info(
+                    "generation_job_pipeline_completed",
+                    extra={
+                        "job_id": job.job_id,
+                        "dataset_version": version,
+                        "schema_valid": result.validation_report.schema_valid,
+                        "business_rules_valid": result.validation_report.business_rules_valid,
+                        "duplicates_found": result.validation_report.duplicates_found,
+                        "realism_score": result.validation_report.realism_score,
+                        "generated_counts": {
+                            "aircrafts": len(result.generated.aircrafts),
+                            "flights": len(result.generated.flights),
+                            "bookings": len(result.generated.bookings),
+                            "manage_travel": len(result.generated.manage_travel),
+                            "irops": len(result.generated.irops),
+                        },
+                    },
                 )
                 job.status = models.JobStatus.COMPLETED
                 job.validation_status = (
@@ -72,7 +117,41 @@ class DatasetService:
                 job.completed_at = datetime.now(UTC)
                 self.db.commit()
                 await cache_client.invalidate_prefix(f"dataset:{version}:")
+                logger.info(
+                    "generation_job_completed",
+                    extra={
+                        "job_id": job.job_id,
+                        "dataset_version": version,
+                        "validation_status": (
+                            job.validation_status.value if job.validation_status else None
+                        ),
+                        "started_at": start_time,
+                        "completed_at": job.completed_at,
+                    },
+                )
                 return job
+            except IntegrityError as exc:
+                self.db.rollback()
+                job.status = models.JobStatus.FAILED
+                job.validation_status = models.ValidationStatus.FAILED
+                job.validation_errors = {"error": str(exc)}
+                job.completed_at = datetime.now(UTC)
+                self.db.add(job)
+                self.db.commit()
+                logger.exception(
+                    "generation_job_integrity_error",
+                    extra={
+                        "job_id": job.job_id,
+                        "dataset_version": version,
+                    },
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Dataset persistence conflict. Use a unique dataset_version "
+                        "or omit dataset_version to auto-generate one."
+                    ),
+                ) from exc
             except Exception as exc:
                 self.db.rollback()
                 job.status = models.JobStatus.FAILED
@@ -81,6 +160,13 @@ class DatasetService:
                 job.completed_at = datetime.now(UTC)
                 self.db.add(job)
                 self.db.commit()
+                logger.exception(
+                    "generation_job_failed",
+                    extra={
+                        "job_id": job.job_id,
+                        "dataset_version": version,
+                    },
+                )
                 raise
 
     def get_job(self, job_id: str) -> models.DatasetGenerationJob | None:

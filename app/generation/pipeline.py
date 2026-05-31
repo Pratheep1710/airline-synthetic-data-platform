@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -65,15 +66,100 @@ class GenerationPipeline:
         record_count: int,
         enable_llm_enrichment: bool = False,
     ) -> PipelineResult:
+        run_start = perf_counter()
+        logger.info(
+            "pipeline_started",
+            extra={
+                "dataset_version": dataset_version,
+                "record_count": record_count,
+                "enable_llm_enrichment": enable_llm_enrichment,
+            },
+        )
         llm_client = get_llm_client(enable_llm=enable_llm_enrichment)
         generator = DeterministicDataGenerator(dataset_version, record_count, llm_client=llm_client)
+
+        generate_start = perf_counter()
         generated = await generator.generate()
+        logger.info(
+            "pipeline_stage_generated",
+            extra={
+                "dataset_version": dataset_version,
+                "duration_ms": round((perf_counter() - generate_start) * 1000, 2),
+                "counts": {
+                    "aircrafts": len(generated.aircrafts),
+                    "flights": len(generated.flights),
+                    "bookings": len(generated.bookings),
+                    "manage_travel": len(generated.manage_travel),
+                    "irops": len(generated.irops),
+                },
+            },
+        )
+
+        validate_start = perf_counter()
         report = self._validate(generated)
+        logger.info(
+            "pipeline_stage_validated",
+            extra={
+                "dataset_version": dataset_version,
+                "duration_ms": round((perf_counter() - validate_start) * 1000, 2),
+                "schema_valid": report.schema_valid,
+                "business_rules_valid": report.business_rules_valid,
+                "duplicates_found": report.duplicates_found,
+                "referential_error_count": len(report.referential_errors),
+                "business_error_count": len(report.business_rule_errors),
+                "realism_score": report.realism_score,
+            },
+        )
+
         if not self._is_valid(report):
             logger.info("Validation failed, attempting deterministic repair loop")
+            repair_start = perf_counter()
             generated = self._repair(generated, report)
+            logger.info(
+                "pipeline_stage_repaired",
+                extra={
+                    "dataset_version": dataset_version,
+                    "duration_ms": round((perf_counter() - repair_start) * 1000, 2),
+                },
+            )
+
+            revalidate_start = perf_counter()
             report = self._validate(generated)
+            logger.info(
+                "pipeline_stage_revalidated",
+                extra={
+                    "dataset_version": dataset_version,
+                    "duration_ms": round((perf_counter() - revalidate_start) * 1000, 2),
+                    "schema_valid": report.schema_valid,
+                    "business_rules_valid": report.business_rules_valid,
+                    "duplicates_found": report.duplicates_found,
+                    "referential_error_count": len(report.referential_errors),
+                    "business_error_count": len(report.business_rule_errors),
+                    "realism_score": report.realism_score,
+                },
+            )
+
+        persist_start = perf_counter()
         self._persist(generated)
+        logger.info(
+            "pipeline_stage_persisted",
+            extra={
+                "dataset_version": dataset_version,
+                "duration_ms": round((perf_counter() - persist_start) * 1000, 2),
+            },
+        )
+
+        logger.info(
+            "pipeline_completed",
+            extra={
+                "dataset_version": dataset_version,
+                "total_duration_ms": round((perf_counter() - run_start) * 1000, 2),
+                "final_schema_valid": report.schema_valid,
+                "final_business_rules_valid": report.business_rules_valid,
+                "final_duplicates_found": report.duplicates_found,
+                "final_realism_score": report.realism_score,
+            },
+        )
         return PipelineResult(dataset_version=dataset_version, generated=generated, validation_report=report)
 
     def _persist(self, generated: GeneratedDataset) -> None:

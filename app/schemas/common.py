@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 T = TypeVar("T")
 
@@ -36,7 +36,21 @@ class ValidationReportSchema(BaseModel):
 class GenerationJobRequest(BaseModel):
     record_count: int = Field(default=75, ge=1, le=5000)
     enable_llm_enrichment: bool = False
-    dataset_version: str | None = None
+    dataset_version: str | None = Field(
+        default=None,
+        description="Optional. Leave empty to auto-generate a unique dataset version.",
+    )
+
+    @field_validator("dataset_version", mode="before")
+    @classmethod
+    def normalize_dataset_version(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        # Swagger's default placeholder value often appears as literal "string".
+        if normalized == "" or normalized.lower() == "string":
+            return None
+        return normalized
 
 
 class GenerationJobResponse(BaseModel):
