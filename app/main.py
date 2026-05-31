@@ -31,7 +31,10 @@ logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    # In development/test we auto-create tables for convenience.
+    # In production, rely on Alembic migrations only.
+    if settings.environment in {"development", "test"}:
+        Base.metadata.create_all(bind=engine)
     await cache_client.connect()
     yield
     await cache_client.close()

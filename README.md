@@ -196,6 +196,12 @@ mypy app
 pytest
 ```
 
+## AWS Deployment
+
+For EC2 + Docker Compose + Nginx production steps, see:
+
+- `DEPLOY_AWS_EC2.md`
+
 ## Design Decisions
 
 - Deterministic controls all PK/FK and relationships to guarantee referential integrity.
