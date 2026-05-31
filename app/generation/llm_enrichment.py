@@ -50,21 +50,38 @@ def get_llm_client(enable_llm: bool) -> LLMClient:
     return MockLLMClient()
 
 
+def _normalize_and_clip(text: str, max_len: int | None = None) -> str:
+    normalized = " ".join((text or "").split())
+    if not max_len or len(normalized) <= max_len:
+        return normalized
+    clipped = normalized[:max_len].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    return clipped or normalized[:max_len]
+
+
 async def enrich_passenger_name(client: LLMClient, first_name: str, last_name: str) -> tuple[str, str]:
     prompt = (
         "Return a realistic airline customer name in 'First Last' format. "
         "Keep it concise and ASCII."
     )
     enriched = await client.enrich(prompt, f"{first_name} {last_name}")
+    enriched = _normalize_and_clip(enriched, max_len=80)
     parts = enriched.split(" ", 1)
     if len(parts) == 2:
-        return parts[0].strip().title(), parts[1].strip().title()
+        return (
+            _normalize_and_clip(parts[0].strip().title(), max_len=32),
+            _normalize_and_clip(parts[1].strip().title(), max_len=32),
+        )
     return first_name, last_name
 
 
-async def enrich_text(client: LLMClient, base_text: str, context: dict[str, Any]) -> str:
+async def enrich_text(
+    client: LLMClient, base_text: str, context: dict[str, Any], max_len: int | None = None
+) -> str:
     prompt = (
         "Rewrite airline customer communication to sound operationally realistic. "
         f"Context: {context}. Base: {base_text}."
     )
-    return await client.enrich(prompt, base_text)
+    enriched = await client.enrich(prompt, base_text)
+    return _normalize_and_clip(enriched, max_len=max_len)

@@ -55,6 +55,7 @@ cp .env.example .env
 ```bash
 docker compose up --build
 ```
+The API is exposed on `http://127.0.0.1:18000` in the Docker setup.
 
 3. Run migrations:
 ```bash
@@ -91,7 +92,7 @@ See `.env.example`. Important values:
 Token endpoint:
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/auth/token" \
+curl -X POST "http://localhost:18000/api/v1/auth/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=admin&password=admin"
 ```
@@ -110,7 +111,7 @@ Scopes:
 ## Generate Dataset
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/generation/jobs" \
+curl -X POST "http://localhost:18000/api/v1/generation/jobs" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -124,13 +125,13 @@ curl -X POST "http://localhost:8000/api/v1/generation/jobs" \
 
 Get flights:
 ```bash
-curl "http://localhost:8000/api/v1/flights?dataset_version=v20260601&page=1&page_size=25" \
+curl "http://localhost:18000/api/v1/flights?dataset_version=v20260601&page=1&page_size=25" \
   -H "Authorization: Bearer <token>"
 ```
 
 Search flights:
 ```bash
-curl -X POST "http://localhost:8000/api/v1/flights/search" \
+curl -X POST "http://localhost:18000/api/v1/flights/search" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -144,19 +145,19 @@ curl -X POST "http://localhost:8000/api/v1/flights/search" \
 
 Get booking by PNR:
 ```bash
-curl "http://localhost:8000/api/v1/bookings/AB12CD?dataset_version=v20260601" \
+curl "http://localhost:18000/api/v1/bookings/AB12CD?dataset_version=v20260601" \
   -H "Authorization: Bearer <token>"
 ```
 
 Get manage travel by PNR:
 ```bash
-curl "http://localhost:8000/api/v1/manage-travel/AB12CD?dataset_version=v20260601" \
+curl "http://localhost:18000/api/v1/manage-travel/AB12CD?dataset_version=v20260601" \
   -H "Authorization: Bearer <token>"
 ```
 
 Get IROPs for flight:
 ```bash
-curl "http://localhost:8000/api/v1/flights/FLT-20260601-AI450-06010001/irops?dataset_version=v20260601" \
+curl "http://localhost:18000/api/v1/flights/FLT-20260601-AI450-06010001/irops?dataset_version=v20260601" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -164,7 +165,7 @@ curl "http://localhost:8000/api/v1/flights/FLT-20260601-AI450-06010001/irops?dat
 
 Validation report endpoint:
 ```bash
-curl "http://localhost:8000/api/v1/datasets/v20260601/validation-report" \
+curl "http://localhost:18000/api/v1/datasets/v20260601/validation-report" \
   -H "Authorization: Bearer <token>"
 ```
 

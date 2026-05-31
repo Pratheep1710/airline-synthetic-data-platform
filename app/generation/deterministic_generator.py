@@ -383,16 +383,19 @@ class DeterministicDataGenerator:
                 self.llm_client,
                 f"Flight {flight.flight_number} is impacted by {event_type.value.lower().replace('_', ' ')}.",
                 {"origin": flight.origin, "destination": flight.destination},
+                max_len=560,
             )
             note = await enrich_text(
                 self.llm_client,
                 "Ops team coordinating recovery and passenger support.",
                 {"event_type": event_type.value},
+                max_len=560,
             )
             action = await enrich_text(
                 self.llm_client,
                 "Reaccommodate on next available service with waiver.",
                 {"event_type": event_type.value},
+                max_len=560,
             )
 
             irops.append(
