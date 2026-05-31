@@ -163,8 +163,16 @@ class GenerationPipeline:
         return PipelineResult(dataset_version=dataset_version, generated=generated, validation_report=report)
 
     def _persist(self, generated: GeneratedDataset) -> None:
-        for row in generated.aircrafts + generated.flights + generated.bookings + generated.manage_travel + generated.irops:
-            self.db.add(row)
+        # Persist in dependency order to guarantee FK-safe inserts even without ORM relationships.
+        self.db.add_all(generated.aircrafts)
+        self.db.flush()
+        self.db.add_all(generated.flights)
+        self.db.flush()
+        self.db.add_all(generated.bookings)
+        self.db.flush()
+        self.db.add_all(generated.manage_travel)
+        self.db.flush()
+        self.db.add_all(generated.irops)
         self.db.flush()
 
     def _validate(self, generated: GeneratedDataset) -> ValidationReport:
