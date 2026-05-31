@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airline-synthetic-data-platform"
+version = "0.1.0"
+description = "Production-grade FastAPI platform for deterministic synthetic airline datasets"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.13.2",
+  "fastapi>=0.115.0",
+  "httpx>=0.27.2",
+  "jsonschema>=4.23.0",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.4.0",
+  "psycopg[binary]>=3.2.1",
+  "python-dotenv>=1.0.1",
+  "python-jose[cryptography]>=3.3.0",
+  "python-multipart>=0.0.9",
+  "redis>=5.0.8",
+  "sqlalchemy>=2.0.32",
+  "uvicorn[standard]>=0.30.5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.11.2",
+  "pytest>=8.3.2",
+  "pytest-asyncio>=0.23.8",
+  "ruff>=0.6.4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".deps", ".git", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+ignore = ["B008", "B009", "E501", "I001", "UP006", "UP035", "UP042"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["app/tests"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+plugins = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

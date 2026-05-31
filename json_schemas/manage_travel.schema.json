@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ManageTravel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manage_travel_id",
+    "dataset_version",
+    "pnr",
+    "selected_seats",
+    "extra_bags",
+    "meals",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "manage_travel_id": { "type": "string" },
+    "dataset_version": { "type": "string" },
+    "pnr": { "type": "string", "pattern": "^[A-Z0-9]{6}$" },
+    "selected_seats": { "type": "array" },
+    "extra_bags": { "type": "array" },
+    "meals": { "type": "array" },
+    "car_booking": { "type": ["object", "null"] },
+    "hotel_booking": { "type": ["object", "null"] },
+    "special_assistance": { "type": ["object", "null"] },
+    "contact_update": { "type": ["object", "null"] },
+    "status": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

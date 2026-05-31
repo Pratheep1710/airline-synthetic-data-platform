@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aircraft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "aircraft_id",
+    "dataset_version",
+    "tail_number",
+    "aircraft_type",
+    "manufacturer",
+    "model",
+    "seat_map_id",
+    "total_seats",
+    "status",
+    "current_airport",
+    "last_maintenance_date",
+    "next_maintenance_due",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "aircraft_id": { "type": "string", "minLength": 5 },
+    "dataset_version": { "type": "string", "minLength": 2 },
+    "tail_number": { "type": "string", "minLength": 4 },
+    "aircraft_type": { "type": "string", "minLength": 3 },
+    "manufacturer": { "type": "string" },
+    "model": { "type": "string" },
+    "seat_map_id": { "type": "string" },
+    "total_seats": { "type": "integer", "minimum": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["AVAILABLE", "ACTIVE", "MAINTENANCE", "OUT_OF_SERVICE"]
+    },
+    "current_airport": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "last_maintenance_date": { "type": "string", "format": "date-time" },
+    "next_maintenance_due": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

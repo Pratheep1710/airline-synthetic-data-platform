@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Booking",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "booking_id",
+    "dataset_version",
+    "pnr",
+    "flight_id",
+    "passenger_count",
+    "passengers",
+    "booking_status",
+    "fare_brand",
+    "cabin",
+    "total_amount",
+    "currency",
+    "payment_status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "booking_id": { "type": "string" },
+    "dataset_version": { "type": "string" },
+    "pnr": { "type": "string", "pattern": "^[A-Z0-9]{6}$" },
+    "flight_id": { "type": "string" },
+    "passenger_count": { "type": "integer", "minimum": 1 },
+    "passengers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "passenger_id",
+          "first_name",
+          "last_name",
+          "passenger_type",
+          "seat_number",
+          "meal_preference",
+          "special_service_request"
+        ],
+        "properties": {
+          "passenger_id": { "type": "string" },
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" },
+          "passenger_type": { "type": "string", "enum": ["ADULT", "CHILD", "INFANT"] },
+          "seat_number": { "type": "string" },
+          "meal_preference": { "type": "string" },
+          "special_service_request": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "booking_status": {
+      "type": "string",
+      "enum": ["CONFIRMED", "TICKETED", "CANCELLED", "HOLD"]
+    },
+    "fare_brand": { "type": "string" },
+    "cabin": { "type": "string", "enum": ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS"] },
+    "total_amount": { "type": "number", "minimum": 0 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "payment_status": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

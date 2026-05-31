@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IROP",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "irop_id",
+    "dataset_version",
+    "flight_id",
+    "event_type",
+    "severity",
+    "event_time",
+    "reason_code",
+    "customer_message",
+    "operational_note",
+    "recovery_action",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "irop_id": { "type": "string" },
+    "dataset_version": { "type": "string" },
+    "flight_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "DELAY",
+        "CANCELLATION",
+        "DIVERSION",
+        "MISCONNECTION",
+        "AIRCRAFT_SWAP",
+        "CREW_DELAY",
+        "WEATHER",
+        "ATC_DELAY",
+        "MAINTENANCE"
+      ]
+    },
+    "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "event_time": { "type": "string", "format": "date-time" },
+    "delay_minutes": { "type": ["integer", "null"] },
+    "original_departure_time": { "type": ["string", "null"], "format": "date-time" },
+    "revised_departure_time": { "type": ["string", "null"], "format": "date-time" },
+    "diversion_airport": { "type": ["string", "null"], "pattern": "^[A-Z]{3}$" },
+    "reason_code": { "type": "string" },
+    "customer_message": { "type": "string", "minLength": 5 },
+    "operational_note": { "type": "string", "minLength": 5 },
+    "recovery_action": { "type": "string", "minLength": 5 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}
